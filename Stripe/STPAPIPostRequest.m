@@ -12,19 +12,20 @@
 #import "STPAPIClient.h"
 #import "STPDispatchFunctions.h"
 #import "StripeError.h"
+#import "STPFormEncoder.h"
 
 @implementation STPAPIPostRequest
 
 + (void)startWithAPIClient:(STPAPIClient *)apiClient
                   endpoint:(NSString *)endpoint
-                  postData:(NSData *)postData
+                parameters:(NSDictionary *)parameters
                 serializer:(id<STPAPIResponseDecodable>)serializer
                 completion:(STPAPIPostResponseBlock)completion {
 
     NSURL *url = [apiClient.apiURL URLByAppendingPathComponent:endpoint];
     NSMutableURLRequest *request = [[NSMutableURLRequest alloc] initWithURL:url];
     request.HTTPMethod = @"POST";
-    request.HTTPBody = postData;
+    request.HTTPBody = [STPFormEncoder formEncodedDataForDictionary:parameters];
     
     [[apiClient.urlSession dataTaskWithRequest:request completionHandler:^(NSData * _Nullable body, NSURLResponse * _Nullable response, NSError * _Nullable error) {
         NSDictionary *jsonDictionary = body ? [NSJSONSerialization JSONObjectWithData:body options:(NSJSONReadingOptions)kNilOptions error:NULL] : nil;

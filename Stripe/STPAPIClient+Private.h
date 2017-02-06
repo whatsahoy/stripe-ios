@@ -17,8 +17,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithPublishableKey:(NSString *)publishableKey
                                baseURL:(NSString *)baseURL;
 
-- (void)createTokenWithData:(NSData *)data
-                 completion:(STPTokenCompletionBlock)completion;
+- (void)createTokenWithParameters:(NSDictionary *)parameters
+                       completion:(STPTokenCompletionBlock)completion;
 
 @property (nonatomic, readwrite) NSURL *apiURL;
 @property (nonatomic, readwrite) NSURLSession *urlSession;

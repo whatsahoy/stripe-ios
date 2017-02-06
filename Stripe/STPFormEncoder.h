@@ -8,17 +8,25 @@
 
 #import <Foundation/Foundation.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 @class STPCardParams, STPBankAccountParams;
 @protocol STPFormEncodable;
 
 @interface STPFormEncoder : NSObject
 
-+ (nonnull NSData *)formEncodedDataForObject:(nonnull NSObject<STPFormEncodable> *)object;
++ (NSDictionary *)dictionaryForObject:(NSObject<STPFormEncodable> *)object;
 
-+ (nonnull NSString *)stringByURLEncoding:(nonnull NSString *)string;
++ (NSData *)formEncodedDataForDictionary:(NSDictionary *)dictionary;
 
-+ (nonnull NSString *)stringByReplacingSnakeCaseWithCamelCase:(nonnull NSString *)input;
++ (NSData *)formEncodedDataForObject:(NSObject<STPFormEncodable> *)object;
 
-+ (nonnull NSString *)queryStringFromParameters:(nonnull NSDictionary *)parameters;
++ (NSString *)stringByURLEncoding:(NSString *)string;
+
++ (NSString *)stringByReplacingSnakeCaseWithCamelCase:(NSString *)input;
+
++ (NSString *)queryStringFromParameters:(NSDictionary *)parameters;
 
 @end
+
+NS_ASSUME_NONNULL_END

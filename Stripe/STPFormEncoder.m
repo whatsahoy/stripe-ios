@@ -26,10 +26,19 @@ FOUNDATION_EXPORT NSString * STPQueryStringFromParameters(NSDictionary *paramete
     return [camelCaseParam copy];
 }
 
-+ (nonnull NSData *)formEncodedDataForObject:(nonnull NSObject<STPFormEncodable> *)object {
++ (nonnull NSDictionary *)dictionaryForObject:(nonnull NSObject<STPFormEncodable> *)object {
     NSDictionary *keyPairs = [self keyPairDictionaryForObject:object];
     NSString *rootObjectName = [object.class rootObjectName];
     NSDictionary *dict = rootObjectName != nil ? @{ rootObjectName: keyPairs } : keyPairs;
+    return dict;
+}
+
++ (nonnull NSData *)formEncodedDataForDictionary:(nonnull NSDictionary *)dictionary {
+    return [STPQueryStringFromParameters(dictionary) dataUsingEncoding:NSUTF8StringEncoding];
+}
+
++ (nonnull NSData *)formEncodedDataForObject:(nonnull NSObject<STPFormEncodable> *)object {
+    NSDictionary *dict = [self dictionaryForObject:object];
     return [STPQueryStringFromParameters(dict) dataUsingEncoding:NSUTF8StringEncoding];
 }
 
