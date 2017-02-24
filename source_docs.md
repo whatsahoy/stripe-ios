@@ -2,8 +2,8 @@
 
 Creating a payment using Sources with the iOS SDK is a multi-step process:
 
-1. [Create an `STPSource` object](link to section below) that represents the customer's payment method
-2. [Check if further action is required](link to section below) from your customer
+1. [Create an `STPSource` object](#create-an-stpsource-object) that represents the customer's payment method
+2. [Check if further action is required](#check-if-further-action-is-required) from your customer
 
 If no further action is required:
 
@@ -18,35 +18,34 @@ If further action is required:
 
 ## Create an STPSource object
 
-Once you've collected your customer's payment details, you can use the `STPAPIClient` class to create a Source object. First, assemble an `STPSourceParams` object with the payment information you've collected. Then, pass this object to `STPAPIClient`'s `createSourceWithParams:` method to create a Source. To create an `STPSourceParams` object, we recommend that you use one of the helper constructors we provide, which specify the information needed for each payment method.
+Once you've collected your customer's payment details, you can use the `STPAPIClient` class to create a source. First, assemble an `STPSourceParams` object with the payment information you've collected. Then, pass this object to the `createSourceWithParams:` method in `STPAPIClient` to create a source. To create an `STPSourceParams` object, we recommend that you use one of the helper constructors we provide, which specify the information needed for each payment method.
 
 For example, to create a source for a [Sofort](https://stripe.com/docs/sources/sofort) payment:
 
-```//obj-c
+```
+// Objective-C
 STPSourceParams *sourceParams = [STPSourceParams sofortParamsWithAmount:1099
                                                               returnURL:@"payments-example://stripe-redirect"
                                                                 country:@"DE"
                                                     statementDescriptor:@"ORDER AT11990"];
-[[STPAPIClient sharedClient] createSourceWithParams:sourceParams completion:^(STPSource *source, NSError *error) {
-    // handle created Source
-}];
+[[STPAPIClient sharedClient] createSourceWithParams:sourceParams completion:completionBlock];
 ```
 
-```//swift
+```
+// Swift
 let sourceParams = STPSourceParams.sofortParams(withAmount: 1099,
                                                 returnURL: "payments-example://stripe-redirect",
                                                 country: "DE",
                                                 statementDescriptor: "ORDER AT11990")
-STPAPIClient.shared().createSource(with: sourceParams) { (source, error) in
-    // handle created Source
-}
+STPAPIClient.shared().createSource(with: sourceParams, completion: completionBlock)
 ```
 
 ## Check if further action is required from your customer
 
 To determine whether further action is required from your customer, check the `flow` property on the newly created `STPSource` object. If `flow` is `STPSourceFlowNone`, no further action is required. For example, if you create a source for a card payment, its status is immediately set to `STPSourceStatusChargeable`. No additional customer action is needed, so you can tell your backend to create a charge with the source right away.
 
-```//objc
+```
+// Objective-C
 STPCardParams *cardParams = [STPCardParams new];
 cardParams.name = @"Jenny Rosen";
 cardParams.number = @"4242424242424242";
@@ -65,7 +64,8 @@ STPSourceParams *sourceParams = [STPSourceParams cardParamsWithCard:cardParams];
                                          }];
 ```
 
-```//swift
+```
+// Swift
 let cardParams = STPCardParams()
 cardParams.name = "Jenny Rosen"
 cardParams.number = "4242424242424242"
@@ -90,7 +90,7 @@ If the source's flow is not `STPSourceFlowNone`, then your customer needs to com
 * `STPSourceFlowVerification`
   * Your customer must verify ownership of their account by providing a code that you post to the Stripe API for authentication. See the documentation for the specific payment method you are using for more information.
 
-If the source requires further action from your customer, your iOS app should _NOT_ tell your backend to create a charge request. Instead, your backend should listen for the `source.chargeable` webhook event to charge the source. This ensures that the source will be charged even if the user never returns to your app after taking the required action. You can refer to our [best practices][https://stripe.com/docs/sources#best-practices] for more information on supporting different payment methods using webhooks.
+If the source requires further action from your customer, your iOS app should _not_ tell your backend to create a charge request. Instead, your backend should listen for the `source.chargeable` webhook event to charge the source. This ensures that the source will be charged even if the user never returns to your app after taking the required action. You can refer to our [best practices](https://stripe.com/docs/sources#best-practices) for more information on supporting different payment methods using webhooks.
 
 ## Redirecting your customer to authorize a source
 
@@ -105,7 +105,8 @@ When you redirect your customer to authorize the payment, we recommend that you 
 
 While polling, be sure to update your app's UI in order to prevent your customer from making an additional payment. If the status of the source is still `pending` after polling for a short time, or if the status cannot be determined, it may be more appropriate for your app to simply tell the user that their order has been received. Once your backend creates a charge using the source, you can notify your customer that their order has been fulfilled (e.g. by sending an email or a push notification).
 
-``` // objc
+```
+// Objective-C
 STPAPIClient *stripeClient = [STPAPIClient sharedClient];
 STPSourceParams *sourceParams = [STPSourceParams sofortParamsWithAmount:1099
                                                               returnURL:@"payments-example://stripe-redirect"
@@ -131,7 +132,8 @@ STPSourceParams *sourceParams = [STPSourceParams sofortParamsWithAmount:1099
 }];
 ```
 
-``` // swift
+```
+// Swift
 let stripeClient = STPAPIClient.shared()
 let sourceParams = STPSourceParams.sofortParams(withAmount: 1099,
                                                 returnURL: "payments-example://stripe-redirect",
