@@ -98,11 +98,7 @@ For sources that require redirecting your customer to authorize the payment, you
 * [Implementing Custom URL Schemes](https://developer.apple.com/library/content/documentation/iPhone/Conceptual/iPhoneOSProgrammingGuide/Inter-AppCommunication/Inter-AppCommunication.html#//apple_ref/doc/uid/TP40007072-CH6-SW10)
 * [Supporting Universal Links](https://developer.apple.com/library/content/documentation/General/Conceptual/AppSearch/UniversalLinks.html)
 
-To handle redirecting your customer to the URL in the source object's `redirect.url` parameter, we recommend using `[UIApplication openURL:]`. Opening the URL in an in-app container like `STPSafariViewController` can prevent your customer's installed banking app from launching to complete authentication, resulting in a lower conversion rate.
-
-When you redirect your customer to authorize the payment, we recommend that you start polling the source in order to display the appropriate confirmation status to your customer when they return to your app. `STPAPIClient`'s `startPollingSourceWithId` method will continuously fetch a source, and call its completion block once the source's status is no longer `pending`, or after the specified timeout length has been exceeded. Most sources will become `chargeable` within a few seconds of your customer authorizing the payment, but some may take longer, and it is always possible for your customer to return to your app without authorizing the payment. To avoid making your customer wait for too long for a confirmation after they return to your app, we recommend polling with a short timeout (e.g. 10 seconds).
-
-While polling, be sure to update your app's UI in order to prevent your customer from making an additional payment. If the status of the source is still `pending` after polling for a short time, or if the status cannot be determined, it may be more appropriate for your app to simply tell the user that their order has been received. Once your backend creates a charge using the source, you can notify your customer that their order has been fulfilled (e.g. by sending an email or a push notification).
+To handle redirecting your customer to the URL in the source object's `redirect.url` parameter, we recommend using `[UIApplication openURL:]`. Opening the URL in an in-app container like `SFSafariViewController` can prevent your customer's installed banking app from launching to complete authentication, resulting in a lower conversion rate. When you redirect your customer to authorize the payment, we recommend that you register for the `UIApplicationWillEnterForeground` notification to handle when they return to your app.
 
 ```
 // Objective-C
@@ -115,18 +111,10 @@ STPSourceParams *sourceParams = [STPSourceParams sofortParamsWithAmount:1099
     if (error) {
         [self handleError:error];
     } else {
-        [[UIApplication sharedApplication] openURL:source.redirect.url];
+        self.source = source;
         [self presentPollingUI];
-        [stripeClient startPollingSourceWithId:source.stripeID clientSecret:source.clientSecret completion:^(STPSource *source, NSError *error) {
-            [self dismissPollingUI];
-            if (source && source.status == STPSourceStatusConsumed) {
-                [self displayOrderConfirmation:@"Payment successfully created"];
-            } else if (source && source.status == STPSourceStatusFailed) {
-                [self displayOrderConfirmation:@"Payment failed"];
-            } else {
-              [self displayOrderConfirmation:@"Order received"];
-            }
-        }];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleAppForeground) name:UIApplicationWillEnterForegroundNotification object:nil];
+        [[UIApplication sharedApplication] openURL:source.redirect.url];
     }
 }];
 ```
@@ -141,20 +129,60 @@ let sourceParams = STPSourceParams.sofortParams(withAmount: 1099,
 stripeClient.createSource(with: sourceParams) { (source, error) in
     if let e = error {
         self.handleError(e)
-    } else if let s = source, let url = s.redirect?.url, let clientSecret = s.clientSecret {
-        UIApplication.shared.openURL(url)
+    } else {
+        self.source = source
         self.presentPollingUI()
-        stripeClient.startPollingSource(withId: s.stripeID, clientSecret: clientSecret, completion: { (source, error) in
-            self.dismissPollingUI()
-            if let s = source, s.status == .consumed {
-                self.displayOrderConfirmation("Payment successfully created")
-            } else if let s = source, s.status == .failed {
-                self.displayOrderConfirmation("Payment failed")
-            } else {
-                self.displayOrderConfirmation("Order received")
-            }
-        })
+        NotificationCenter.default.addObserver(self, selector: #selector(handleAppForeground), name: .UIApplicationWillEnterForeground, object: nil)
+        UIApplication.shared.openURL(url)
     }
+}
+```
+
+After your customer returns to your app, we recommend that you start polling the source in order to display the appropriate confirmation status. `STPAPIClient`'s `startPollingSourceWithId` method will continuously fetch a source, and call its completion block once the source's status is no longer `pending`, or after the specified timeout length has been exceeded. Most sources will become `chargeable` within a few seconds of your customer authorizing the payment, but some may take longer, and it is always possible for your customer to return to your app without authorizing the payment. To avoid making your customer wait for too long for a confirmation after they return to your app, we recommend polling with a short timeout (e.g. 10 seconds).
+
+While polling, be sure to update your app's UI in order to prevent your customer from making an additional payment. If the status of the source is still `pending` after polling for a short time, or if the status cannot be determined, it may be more appropriate for your app to simply tell the user that their order has been received. Once your backend creates a charge using the source, you can notify your customer that their order has been fulfilled (e.g. by sending an email or a push notification).
+
+```
+// Objective-C
+- (void)handleAppForeground {
+    if (!self.source) {
+        return;
+    }
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIApplicationWillEnterForegroundNotification object:nil];
+    [[STPAPIClient sharedClient] startPollingSourceWithId:self.source.stripeID clientSecret:self.source.clientSecret completion:^(STPSource *source, NSError *error) {
+        [self dismissPollingUI];
+        if (error) {
+            [self.delegate exampleViewController:self didFinishWithError:error];
+        } else {
+            if (source.status == STPSourceStatusConsumed) {
+                [self.delegate exampleViewController:self didFinishWithMessage:@"Payment successfully created"];
+            } else if (source.status == STPSourceStatusFailed) {
+                [self.delegate exampleViewController:self didFinishWithMessage:@"Payment failed"];
+            } else {
+                [self.delegate exampleViewController:self didFinishWithMessage:@"Order received"];
+            }
+        }
+    }];
+}
+```
+
+```
+// Swift
+func handleAppForeground() {
+    guard let s = self.source, let clientSecret = s.clientSecret else {
+        return
+    }
+    NotificationCenter.default.removeObserver(self, name: .UIApplicationWillEnterForeground, object: nil)
+    STPAPIClient.shared().startPollingSource(withId: s.stripeID, clientSecret: clientSecret, completion: { (source, error) in
+        self.dismissPollingUI()
+        if let s = source, s.status == .consumed {
+            self.displayOrderConfirmation("Payment successfully created")
+        } else if let s = source, s.status == .failed {
+            self.displayOrderConfirmation("Payment failed")
+        } else {
+            self.displayOrderConfirmation("Order received")
+        }
+    })
 }
 ```
 
