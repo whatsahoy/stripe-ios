@@ -55,13 +55,12 @@ cardParams.cvc = @"123";
 
 STPSourceParams *sourceParams = [STPSourceParams cardParamsWithCard:cardParams];
 
-[[STPAPIClient sharedClient] createSourceWithParams:sourceParams
-                                         completion:^(STPSource *source, NSError *error) {
-                                             if (source.flow == STPSourceFlowNone
-                                                 && source.status == STPSourceStatusChargeable) {
-                                                 [self createBackendChargeWithSourceID:source.stripeID];
-                                             }
-                                         }];
+[[STPAPIClient sharedClient] createSourceWithParams:sourceParams completion:^(STPSource *source, NSError *error) {
+    if (source.flow == STPSourceFlowNone
+        && source.status == STPSourceStatusChargeable) {
+        [self createBackendChargeWithSourceID:source.stripeID];
+    }
+}];
 ```
 
 ```
