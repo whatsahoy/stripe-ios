@@ -250,6 +250,17 @@ The curent brand image displayed in the receiver.
 @property (nonatomic, copy, readwrite, nonnull) STPPaymentMethodCardParams *cardParams;
 
 /**
+Convenience property for creating an `STPPaymentMethodCardParams` from the currently entered information
+or programmatically setting the field's contents. For example, if you're using another library
+to scan your user's credit card with a camera, you can assemble that data into an `STPPaymentMethodCardParams`
+object and set this property to that object to prefill the fields you've collected.
+
+ @param cardParams The parameters of card to be displayed.
+ @param becomeFirstResponder Decides if text field should focus on first invalid entry after filling out the data.
+ */
+- (void)setCardParams:(STPPaymentMethodCardParams * _Nonnull)cardParams becomeFirstResponder:(BOOL)becomeFirstResponder;
+
+/**
  Causes the text field to begin editing. Presents the keyboard.
  
  @return Whether or not the text field successfully began editing.

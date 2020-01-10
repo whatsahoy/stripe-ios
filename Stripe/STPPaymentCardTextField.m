@@ -75,6 +75,7 @@
 @property (nonatomic, assign) BOOL isMidSubviewEditingTransitionInternal;
 @property (nonatomic, assign) BOOL receivedUnmatchedShouldBeginEditing;
 @property (nonatomic, assign) BOOL receivedUnmatchedShouldEndEditing;
+@property (nonatomic, assign) BOOL isBecomingFirstResponderBlocked;
 
 @end
 
@@ -659,9 +660,14 @@ CGFloat const STPPaymentCardTextFieldMinimumPadding = 10;
 }
 
 - (void)setCardParams:(STPPaymentMethodCardParams *)callersCardParams {
+    [self setCardParams:callersCardParams becomeFirstResponder:YES];
+}
+
+- (void)setCardParams:(STPPaymentMethodCardParams *)callersCardParams becomeFirstResponder:(BOOL)becomeFirstResponder {
+    self.isBecomingFirstResponderBlocked = !becomeFirstResponder;
     /*
      Due to the way this class is written, programmatically setting field text
-     behaves identically to user entering text (and will have the same forwarding 
+     behaves identically to user entering text (and will have the same forwarding
      on to next responder logic).
 
      We have some custom logic here in the main accesible programmatic setter
@@ -702,16 +708,18 @@ CGFloat const STPPaymentCardTextFieldMinimumPadding = 10;
         if (state == STPCardValidationStateValid) {
             STPFormTextField *nextField = [self firstInvalidSubField];
             if (nextField) {
-                [nextField becomeFirstResponder];
+                if (becomeFirstResponder) {
+                    [nextField becomeFirstResponder];
+                }
             } else {
                 [self resignFirstResponder];
             }
-        } else {
+        } else if (becomeFirstResponder) {
             [originalSubResponder becomeFirstResponder];
         }
     } else {
         [self layoutViewsToFocusField:nil
-                 becomeFirstResponder:YES
+                 becomeFirstResponder:becomeFirstResponder
                              animated:NO
                            completion:nil];
     }
@@ -725,6 +733,7 @@ CGFloat const STPPaymentCardTextFieldMinimumPadding = 10;
         [self updateImageForFieldType:STPCardFieldTypeNumber];
     }
     [self updateCVCPlaceholder];
+    self.isBecomingFirstResponderBlocked = false;
 }
 
 - (void)setText:(NSString *)text inField:(STPCardFieldType)field {
@@ -1185,7 +1194,7 @@ typedef void (^STPLayoutAnimationCompletionBlock)(BOOL completed);
         && ![self.focusedTextFieldForLayout isEqualToNumber:@(STPCardFieldTypeNumber)]
         && ([self.viewModel validationStateForField:STPCardFieldTypeNumber] != STPCardValidationStateValid)) {
         fieldtoFocus = @(STPCardFieldTypeNumber);
-        if (shouldBecomeFirstResponder) {
+        if (shouldBecomeFirstResponder && !self.isBecomingFirstResponderBlocked) {
             [self.numberField becomeFirstResponder];
         }
     }
@@ -1346,7 +1355,9 @@ typedef void (^STPLayoutAnimationCompletionBlock)(BOOL completed);
             }
 
             // This is a no-op if this is the last field & they're all valid
-            [[self nextFirstResponderField] becomeFirstResponder];
+            if (!self.isBecomingFirstResponderBlocked) {
+                [[self nextFirstResponderField] becomeFirstResponder];
+            }
             UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification, nil);
             
             break;
