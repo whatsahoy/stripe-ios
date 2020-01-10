@@ -659,9 +659,13 @@ CGFloat const STPPaymentCardTextFieldMinimumPadding = 10;
 }
 
 - (void)setCardParams:(STPPaymentMethodCardParams *)callersCardParams {
+    [self setCardParams:callersCardParams becomeFirstResponder:YES];
+}
+
+- (void)setCardParams:(STPPaymentMethodCardParams *)callersCardParams becomeFirstResponder:(BOOL)becomeFirstResponder {
     /*
      Due to the way this class is written, programmatically setting field text
-     behaves identically to user entering text (and will have the same forwarding 
+     behaves identically to user entering text (and will have the same forwarding
      on to next responder logic).
 
      We have some custom logic here in the main accesible programmatic setter
@@ -702,16 +706,18 @@ CGFloat const STPPaymentCardTextFieldMinimumPadding = 10;
         if (state == STPCardValidationStateValid) {
             STPFormTextField *nextField = [self firstInvalidSubField];
             if (nextField) {
-                [nextField becomeFirstResponder];
+                if (becomeFirstResponder) {
+                    [nextField becomeFirstResponder];
+                }
             } else {
                 [self resignFirstResponder];
             }
-        } else {
+        } else if (becomeFirstResponder) {
             [originalSubResponder becomeFirstResponder];
         }
     } else {
         [self layoutViewsToFocusField:nil
-                 becomeFirstResponder:YES
+                 becomeFirstResponder:becomeFirstResponder
                              animated:NO
                            completion:nil];
     }
